@@ -7,17 +7,22 @@ import util
 import location as loc
 
 
+DEFAULT_MARGIN_MI = 30
 DEFAULT_REFRESH_TIME = 5
-FLIGHT_CHOICE_RANDOM = 'random'
+DEFAULT_FLIGHT_LIMIT = 8
 DEFAULT_ONLY_AIRBORNE = True
 AIRBORNE_ALTITUDE_THRESHOLD = 10
+FLIGHT_CHOICE_RANDOM = 'random'
 DEFAULT_FLIGHT_CHOICE = FLIGHT_CHOICE_RANDOM
 
 
 class AirscapeController(object):
 
-    def __init__(self, bbox_center_query, margin_mi=30,
-                 refresh_time=DEFAULT_REFRESH_TIME, flight_limit=8):
+    def __init__(self, 
+                 bbox_center_query,
+                 margin_mi=DEFAULT_MARGIN_MI,
+                 refresh_time=DEFAULT_REFRESH_TIME,
+                 flight_limit=DEFAULT_FLIGHT_LIMIT):
         self.bbox = loc.BoundingBox(bbox_center_query, margin_mi)
         self.fr_api = FlightRadar24API()
         self.refresh_time = refresh_time
@@ -32,14 +37,20 @@ class AirscapeController(object):
     def run(self):
         self.running = True
         while self.running:
-            start_time = time.time()
+            self.start_timing()
             all_flights = self.get_flights()
             self.tracked_flights.update_or_add(all_flights)
             print(util.timestamp())
             print(self.tracked_flights)
-            time_elapsed = time.time()-start_time
-            sleep_time = max(0, self.refresh_time-time_elapsed)
-            time.sleep(sleep_time)
+            self.sleep_net()
+
+    def start_timing(self):
+        self.start_time = time.time()
+    
+    def sleep_net(self):
+        time_elapsed = time.time() - self.start_time
+        sleep_time = max(0, self.refresh_time - time_elapsed)
+        time.sleep(sleep_time)
 
 
 class TrackedFlights(object):
