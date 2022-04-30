@@ -1,9 +1,12 @@
+import math
+
 from geopy.distance import geodesic
 
 
 DELTA_HEADING = 'delta_heading'
 DEFAULT_DELTA_STATS = [DELTA_HEADING]
 
+INSTANT_DISTANCE_TO_CENTER = 'instant_distance_to_center'
 INSTANT_BBOX_LATLON_PAN = 'instant_bbox_latlon_pan'
 INSTANT_FLIGHT_PROGRESS = 'instant_flight_progress'
 FLIGHT_PROGRESS_MAX_DEPARTURE_PERCENT = 10
@@ -12,6 +15,7 @@ FLIGHT_PROGRESS_DEPARTING = 'departing'
 FLIGHT_PROGRESS_MIDFLIGHT = 'midflight'
 FLIGHT_PROGRESS_ARRIVING = 'arriving'
 DEFAULT_INSTANT_STATS = [
+    INSTANT_DISTANCE_TO_CENTER,
     INSTANT_BBOX_LATLON_PAN,
     INSTANT_FLIGHT_PROGRESS
 ]
@@ -80,10 +84,25 @@ class InstantStatsCalculator(object):
         self.stats = stats
 
     def calculate_instant_stats(self, flight):
+        if INSTANT_DISTANCE_TO_CENTER in self.stats:
+            self.calculate_distance_to_center(flight)
         if INSTANT_BBOX_LATLON_PAN in self.stats:
             self.calculate_bbox_latlon_pan(flight)
         if INSTANT_FLIGHT_PROGRESS in self.stats:
             self.calculate_flight_progress(flight)
+
+    def calculate_distance_to_center(self, flight):
+        flight.distance_to_center = geodesic(
+            (flight.latitude, flight.longitude),
+            (self.bbox.center.latitude, self.bbox.center.longitude)
+        ).mi
+        max_d = math.sqrt(2) * self.bbox.margin_mi
+        flight.proximity = 1 - self.ratio(
+            flight.distance_to_center,
+            max_d,
+            0,
+            1
+        )
 
     def calculate_bbox_latlon_pan(self, flight):
         flight.bbox_pan_lat = self.ratio(
