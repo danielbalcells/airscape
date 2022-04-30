@@ -95,6 +95,7 @@ class TrackedFlights(object):
         for f in next_flights_tracked:
             prev_flight = self.flights[f.id]
             f.slot = prev_flight.slot
+            f.new = False
             self.flights[f.id] = f
             new_slots[prev_flight.slot] = f.id
         self.slots = new_slots
@@ -108,6 +109,7 @@ class TrackedFlights(object):
             return
         slot = self.get_slot()
         flight.slot = slot
+        flight.new = True
         self.slots[slot] = flight.id
         self.flights[flight.id] = flight
 
