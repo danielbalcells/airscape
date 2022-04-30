@@ -4,6 +4,7 @@ import random
 from FlightRadar24.api import FlightRadar24API
 
 import util
+import stats
 import location as loc
 
 
@@ -27,7 +28,10 @@ class AirscapeController(object):
         self.fr_api = FlightRadar24API()
         self.refresh_time = refresh_time
         self.running = False
+        self.airport_cache = loc.AirportCache()
         self.tracked_flights = TrackedFlights(flight_limit)
+        self.stats_controller = stats.StatsController(
+            bbox=self.bbox, airport_cache=self.airport_cache)
 
     def get_flights(self):
         bbox_str = self.bbox.get_coordinate_string(order=loc.ORDER_FR_API)
@@ -38,11 +42,19 @@ class AirscapeController(object):
         self.running = True
         while self.running:
             self.start_timing()
-            all_flights = self.get_flights()
-            self.tracked_flights.update_or_add(all_flights)
+            self.update_tracked_flights()
             print(util.timestamp())
             print(self.tracked_flights)
             self.sleep_net()
+
+    def update_tracked_flights(self):
+        prev_tracked_flights = self.tracked_flights
+        all_flights = self.get_flights()
+        self.tracked_flights.update_or_add(all_flights)
+        self.stats_controller.add_delta_stats(
+            prev_tracked_flights, self.tracked_flights)
+        self.stats_controller.add_instant_stats(self.tracked_flights)
+
 
     def start_timing(self):
         self.start_time = time.time()
@@ -63,7 +75,8 @@ class TrackedFlights(object):
     def __str__(self):
         output_string = ''
         for index, flight_id in enumerate(self.slots):
-            output_string += f'{index}: {self.flights[flight_id]}\n'
+            if flight_id:
+                output_string += f'{index}: {self.flights[flight_id]}\n'
         return output_string
 
     def update_or_add(self, next_flights):
@@ -80,10 +93,10 @@ class TrackedFlights(object):
                                 self.flights.keys()]
         new_slots = [''] * self.limit
         for f in next_flights_tracked:
-            slot = self.flights[f.id].slot
-            f.slot = slot
+            prev_flight = self.flights[f.id]
+            f.slot = prev_flight.slot
             self.flights[f.id] = f
-            new_slots[slot] = f.id
+            new_slots[prev_flight.slot] = f.id
         self.slots = new_slots
 
     def add_from_list(self, next_flights, flight_choice=DEFAULT_FLIGHT_CHOICE):
@@ -113,3 +126,13 @@ class TrackedFlights(object):
         for i, a in enumerate(self.slots):
             if not a:
                 return i
+
+    def get_ordered(self):
+        return [self.flights[flight_id] for flight_id in self.slots 
+                if flight_id]
+
+    def get_flight_ids(self):
+        return [i for i in self.slots if i]
+
+    def get_by_ids(self, ids):
+        return [self.flights[i] for i in ids]

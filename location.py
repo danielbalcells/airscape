@@ -1,4 +1,5 @@
 from geopy.geocoders import Nominatim
+from FlightRadar24.api import FlightRadar24API
 
 
 USER_AGENT = "Airscape"
@@ -42,3 +43,20 @@ class BoundingBox(object):
         for o in order:
             coordinate_string += f'{self.coordinates[o]},'
         return coordinate_string[:-1]
+
+
+class AirportCache(object):
+
+    def __init__(self):
+        self.airports = {}
+        self.fr_api = FlightRadar24API()
+        self.airports = {}
+        self.build_cache()
+
+    def build_cache(self):
+        airports = self.fr_api.get_airports()
+        for airport in airports:
+            self.airports[airport['iata']] = airport
+
+    def get_by_iata(self, iata):
+        return self.airports.get(iata)
