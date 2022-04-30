@@ -50,7 +50,6 @@ class StatsController(object):
         new_ids = [i for i in next_ids if i not in prev_ids]
         for i in new_ids:
             self.delta_stats_calculator.init_delta_stats(
-                prev_flights.flights[i],
                 next_flights.flights[i]
             )
 

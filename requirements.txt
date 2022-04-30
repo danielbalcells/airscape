@@ -1,3 +1,4 @@
 FlightRadarAPI
 ipython
 geopy
+python-osc

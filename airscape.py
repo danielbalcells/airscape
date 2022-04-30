@@ -1,10 +1,12 @@
 import time
 import random
+import copy
 
 from FlightRadar24.api import FlightRadar24API
 
 import util
 import stats
+import osc
 import location as loc
 
 
@@ -23,7 +25,10 @@ class AirscapeController(object):
                  bbox_center_query,
                  margin_mi=DEFAULT_MARGIN_MI,
                  refresh_time=DEFAULT_REFRESH_TIME,
-                 flight_limit=DEFAULT_FLIGHT_LIMIT):
+                 flight_limit=DEFAULT_FLIGHT_LIMIT,
+                 osc_ip=osc.DEFAULT_IP,
+                 osc_port=osc.DEFAULT_PORT,
+                 osc_fields=osc.DEFAULT_FIELDS):
         self.bbox = loc.BoundingBox(bbox_center_query, margin_mi)
         self.fr_api = FlightRadar24API()
         self.refresh_time = refresh_time
@@ -32,6 +37,8 @@ class AirscapeController(object):
         self.tracked_flights = TrackedFlights(flight_limit)
         self.stats_controller = stats.StatsController(
             bbox=self.bbox, airport_cache=self.airport_cache)
+        self.osc_controller = osc.OSCController(
+            ip=osc_ip, port=osc_port, fields=osc_fields)
 
     def get_flights(self):
         bbox_str = self.bbox.get_coordinate_string(order=loc.ORDER_FR_API)
@@ -41,20 +48,24 @@ class AirscapeController(object):
     def run(self):
         self.running = True
         while self.running:
+            print(util.timestamp())
             self.start_timing()
             self.update_tracked_flights()
-            print(util.timestamp())
+            self.send_osc()
             print(self.tracked_flights)
             self.sleep_net()
 
     def update_tracked_flights(self):
-        prev_tracked_flights = self.tracked_flights
+        prev_tracked_flights = copy.deepcopy(self.tracked_flights)
         all_flights = self.get_flights()
         self.tracked_flights.update_or_add(all_flights)
         self.stats_controller.add_delta_stats(
             prev_tracked_flights, self.tracked_flights)
         self.stats_controller.add_instant_stats(self.tracked_flights)
 
+    def send_osc(self):
+        for flight in self.tracked_flights.get_ordered():
+            self.osc_controller.send_flight(flight)
 
     def start_timing(self):
         self.start_time = time.time()
