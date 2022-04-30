@@ -92,13 +92,13 @@ class InstantStatsCalculator(object):
             self.calculate_flight_progress(flight)
 
     def calculate_distance_to_center(self, flight):
-        flight.distance_to_center = geodesic(
+        flight.distance_to_center_mi = geodesic(
             (flight.latitude, flight.longitude),
             (self.bbox.center.latitude, self.bbox.center.longitude)
         ).mi
         max_d = math.sqrt(2) * self.bbox.margin_mi
         flight.proximity = 1 - self.ratio(
-            flight.distance_to_center,
+            flight.distance_to_center_mi,
             max_d,
             0,
             1
