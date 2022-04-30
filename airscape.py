@@ -55,23 +55,22 @@ class AirscapeController(object):
 
 class TrackedFlights(object):
 
-    def __init__(self, flight_limit):
-        self.flight_limit = flight_limit
-        self.slots = list(range(flight_limit))
+    def __init__(self, limit):
+        self.limit = limit
         self.flights = {}
-        self.slot_assignments = {}
+        self.slots = [''] * self.limit
 
     def __str__(self):
         output_string = ''
-        for index, flight in enumerate(self.sort_by_slot()):
-            output_string += f'{index}: {flight}\n'
+        for index, flight_id in enumerate(self.slots):
+            output_string += f'{index}: {self.flights[flight_id]}\n'
         return output_string
 
     def update_or_add(self, next_flights):
         next_flights = self.filter(next_flights)
         self.update(next_flights)
         while (
-                len(self.flights) < self.flight_limit
+                len(self.flights) < self.limit
                 and len(self.flights) < len(next_flights)
         ):
             self.add_from_list(next_flights)
@@ -79,11 +78,13 @@ class TrackedFlights(object):
     def update(self, next_flights):
         next_flights_tracked = [f for f in next_flights if f.id in
                                 self.flights.keys()]
-        new_flight_slots = {}
+        new_slots = [''] * self.limit
         for f in next_flights_tracked:
+            slot = self.flights[f.id].slot
+            f.slot = slot
             self.flights[f.id] = f
-            new_flight_slots[f.id] = self.slot_assignments[f.id]
-        self.slot_assignments = new_flight_slots
+            new_slots[slot] = f.id
+        self.slots = new_slots
 
     def add_from_list(self, next_flights, flight_choice=DEFAULT_FLIGHT_CHOICE):
         next_flights_not_tracked = [f for f in next_flights if f.id not in
@@ -92,8 +93,9 @@ class TrackedFlights(object):
             flight = self.get_random_flight(next_flights_not_tracked)
         if not flight:
             return
-        slot = self.get_available_slot()
-        self.slot_assignments[flight.id] = slot
+        slot = self.get_slot()
+        flight.slot = slot
+        self.slots[slot] = flight.id
         self.flights[flight.id] = flight
 
     def filter(self, flights, only_airborne=DEFAULT_ONLY_AIRBORNE):
@@ -107,13 +109,7 @@ class TrackedFlights(object):
             return
         return random.choice(flights)
 
-    def get_available_slot(self):
-        for p in self.slots:
-            if p not in self.slot_assignments.values():
-                return p
-
-    def sort_by_slot(self):
-        sorted_assignments = sorted(self.slot_assignments.items(), 
-                                     key=lambda x: x[1])
-        sorted_ids = [a[0] for a in sorted_assignments]
-        return [self.flights[i] for i in sorted_ids]
+    def get_slot(self):
+        for i, a in enumerate(self.slots):
+            if not a:
+                return i
