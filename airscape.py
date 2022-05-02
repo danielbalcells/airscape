@@ -102,13 +102,15 @@ class TrackedFlights(object):
     def update(self, next_flights):
         next_flights_tracked = [f for f in next_flights if f.id in
                                 self.flights.keys()]
+        new_flights = {}
         new_slots = [''] * self.limit
         for f in next_flights_tracked:
             prev_flight = self.flights[f.id]
             f.slot = prev_flight.slot
             f.new = False
-            self.flights[f.id] = f
+            new_flights[f.id] = f
             new_slots[prev_flight.slot] = f.id
+        self.flights = new_flights
         self.slots = new_slots
 
     def add_from_list(self, next_flights, flight_choice=DEFAULT_FLIGHT_CHOICE):
